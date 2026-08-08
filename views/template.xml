@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="game_template" name="Page de Jeu Cache-Cache">
+        <t t-call="website.layout">
+            <div id="wrap" class="oe_structure oe_empty">
+                <!-- CDN de la carte Leaflet -->
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+                <div class="container my-4 text-center">
+                    <h2>Salon : <span t-esc="game.name"/></h2>
+                    <div id="map" style="height: 450px; width: 100%; border-radius: 12px;" class="mb-3"></div>
+                    <button id="btn-start" class="btn btn-primary btn-lg w-100">Activer mon GPS</button>
+                    <p id="status-text" class="text-muted mt-2">En attente de la localisation...</p>
+                </div>
+
+                <script type="text/javascript">
+                    document.addEventListener("DOMContentLoaded", function() {
+                        var map = L.map('map').setView([48.8566, 2.3522], 13);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 19
+                        }).addTo(map);
+
+                        var marker = null;
+
+                        document.getElementById('btn-start').addEventListener('click', function() {
+                            if ("geolocation" in navigator) {
+                                navigator.geolocation.watchPosition(function(position) {
+                                    var lat = position.coords.latitude;
+                                    var lng = position.coords.longitude;
+
+                                    if (!marker) {
+                                        marker = L.marker([lat, lng]).addTo(map);
+                                    } else {
+                                        marker.setLatLng([lat, lng]);
+                                    }
+                                    map.setView([lat, lng], 16);
+
+                                    document.getElementById('status-text').innerText = "GPS actif : " + lat.toFixed(4) + ", " + lng.toFixed(4);
+
+                                    fetch('/game/update_location', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            params: {
+                                                player_id: 1,
+                                                latitude: lat,
+                                                longitude: lng
+                                            }
+                                        })
+                                    });
+                                }, function(err) {
+                                    alert("Erreur GPS : " + err.message);
+                                }, { enableHighAccuracy: true });
+                            } else {
+                                alert("La géolocalisation n'est pas supportée.");
+                            }
+                        });
+                    });
+                </script>
+            </div>
+        </t>
+    </template>
+</odoo>
